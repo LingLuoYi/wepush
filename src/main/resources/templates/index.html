@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="ZH_CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>WXPUSH</title>
+    <link rel="stylesheet" th:href="@{../layui/css/layui.css}" media="all">
+    <script th:src="@{../layui/layui.all.js}"></script>
+</head>
+<body>
+<div>
+    当前登录用户：<span th:text="${user.getUsername()}"></span>
+</div>
+
+<div th:if="${wxQrCode != null}">
+    当前未登录微信，请扫描下面的二维码，登录微信
+    <img id="msg" th:src="${wxQrCode}">
+    <script>
+        var $ = layui.$, layer = layui.layer;
+
+        function isScanning(isLogin) {
+            $.ajax({
+                url: "/isWxLogin",
+                type: "get",
+                dataType: "text",
+                timeout: 26 * 1000,
+                success: function (res) {
+                    console.log(res);
+                    if (res !== null && res !== "" && res !== "登录超时,请重新获取二维码") {
+                        document.getElementById("msg").src = res;
+                        isLogin();
+                    } else {
+                        window.location.href = "/login";
+                    }
+                },
+                error: function (res) {
+                    console.log(res);
+                    layer.msg("请求失败")
+                }
+            })
+        }
+
+        var isLogin = function () {
+            $.ajax({
+                url: "/isWxLogin",
+                type: "get",
+                dataType: "text",
+                timeout: 26 * 1000,
+                success: function (res) {
+                    if (res === "已授权登录") {
+                        window.location.href = "/";
+                    } else if (res === "登录超时,请重新获取二维码") {
+                        layer.alert("登录超时,请刷新当前页面");
+                    } else if (res === "等待授权登录") {
+                        layer.msg("等待授权登录");
+                        isLogin();
+                    } else {
+                        layer.alert("为了你的帐号安全，此微信号不能登录网页微信。");
+                    }
+                },
+                error: function (res) {
+                    console.log(res);
+                    layer.msg("请求失败")
+                }
+            })
+        };
+
+        $(function () {
+            isScanning(isLogin);
+        })
+    </script>
+</div>
+
+<div th:if="${me != null}">
+    当前登录微信信息：
+    账号：<span th:text="${me.name}"></span>
+    头像：<span th:text="${me.avatarUrl}"></span>
+    位置：<span th:text="${me.province}"></span> <span th:text="${me.city}"></span>
+    签名：<span th:text="${me.signature}"></span>
+
+
+    当前推送设置：
+    <table>
+        <thead>
+        <tr>
+            <th>type</th>
+            <th>name</th>
+            <th>operate</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="push:${allPush}">
+            <div th:each="map:${push}">
+                <td th:text="${map.key}"></td>
+                <td th:text="${map.value}"></td>
+                <td><a class="layui-btn layui-btn-xs" href="javascript;">删除</a></td>
+            </div>
+        </tr>
+        </tbody>
+    </table>
+
+    添加推送设置：
+    <div class="layui-form">
+        type:  <input type="text" class="layui-input" name="type" placeholder="type">
+        id:
+        <select name="id">
+            <option value=""></option>
+            <div th:each="f:${friends}">
+                <option th:value="${f.value.id}" th:text="${f.value.name}"></option>
+            </div>
+            <div th:each="g:${getGroup}">
+                <option th:value="${g.value.id}" th:text="${g.value.name}"></option>
+            </div>
+        </select>
+    </div>
+
+
+    请求推送地址：
+    <span th:text="${#httpServletRequest.getScheme() + '://' + #httpServletRequest.getServerName() + ':' + #httpServletRequest.getServerPort() }"></span>
+</div>
+</body>
+</html>
